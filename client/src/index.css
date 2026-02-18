@@ -1,15 +1,23 @@
 @import "tailwindcss";
 
+/* 🚨 THIS IS THE FIX FOR TAILWIND v4: Forces manual class-based dark mode 🚨 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
-  body {
-    @apply bg-gray-50 text-gray-900 transition-colors duration-500 ease-in-out;
+  /* Enforce pure White for Light Mode */
+  html, body {
+    @apply bg-white text-gray-900 transition-colors duration-500 ease-in-out;
+    background-color: #ffffff !important;
   }
-  .dark body {
+  
+  /* Enforce pure Black for Dark Mode */
+  html.dark, html.dark body {
     @apply bg-[#0a0a0a] text-gray-100;
+    background-color: #0a0a0a !important;
   }
 }
 
-/* Custom Scrollbar for a premium feel */
+/* Premium Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -17,8 +25,14 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+  @apply bg-gray-300 rounded-full transition-colors;
+}
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-gray-800;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400 dark:bg-gray-600;
+  @apply bg-gray-400;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
 }
