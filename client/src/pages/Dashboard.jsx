@@ -12,7 +12,7 @@ import { useTasks } from "../hooks/useTasks";
 import { useCalendar } from "../hooks/useCalendar";
 
 const Dashboard = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { tasks: libraryTasks, addTask, updateTask, deleteTask } = useTasks();
   const { getEntriesByDate, addEntryToDate, updateEntry, deleteEntry } =
     useCalendar();
@@ -116,6 +116,14 @@ const Dashboard = () => {
     } else if (activeType === "CalendarEntry") {
       await updateEntry(active.data.current.entry._id, { date: targetDate });
     }
+  };
+
+  // --- Name Formatter ---
+  const formatName = (fullName) => {
+    if (!fullName) return "";
+    const parts = fullName.split(" ");
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`; // Aditya Bhakat -> Aditya B.
   };
 
   // --- Form Handlers ---
@@ -257,12 +265,21 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-semibold hover:opacity-80"
-              >
-                Share Calendar
-              </button>
+              {/* NEW: USER GREETING AND SHARE BUTTON */}
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-wide">
+                  Hi,{" "}
+                  <span className="text-black dark:text-white">
+                    {formatName(user?.name)}
+                  </span>
+                </span>
+                <button
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-semibold hover:opacity-80"
+                >
+                  Share Calendar
+                </button>
+              </div>
             </header>
 
             <div className="flex-1 p-6 overflow-hidden">
