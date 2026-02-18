@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 
 import authRoutes from './routes/authRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
+import calendarRoutes from './routes/calendarRoutes.js';
 
 dotenv.config();
 
@@ -34,7 +36,10 @@ const connectDB = async () => {
 };
 connectDB();
 
+// Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/calendar', calendarRoutes);
 
 // Basic Health Check Route
 app.get('/api/health', (req, res) => {
