@@ -17,6 +17,7 @@ export const getCalendarEntries = async (req, res) => {
 
 // Add a task to a specific date (Fired on Drop)
 export const createCalendarEntry = async (req, res) => {
+  const { blueprintId, date, customDescription, timeOfDay } = req.body;
   try {
     const { blueprintId, date, customDescription } = req.body;
 
@@ -30,6 +31,7 @@ export const createCalendarEntry = async (req, res) => {
       blueprintId,
       date,
       customDescription,
+      timeOfDay: timeOfDay || 'Any',
       order: orderCount
     });
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { axiosPrivate } from '../api/axios';
 
 export const useCalendar = () => {
-  const [entries, setEntries] = useState([]); // Array of all calendar entries
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const fetchEntries = useCallback(async () => {
@@ -17,31 +17,40 @@ export const useCalendar = () => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchEntries();
-  }, [fetchEntries]);
+  useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
-  // Fired when an item is dropped from the Library to a Day
-  const addEntryToDate = async (blueprintId, targetDate) => {
+  const addEntryToDate = async (blueprintId, targetDate, timeOfDay = 'Any') => {
     try {
-      // Optimistic UI update could go here, but for simplicity we'll await the DB
-      const response = await axiosPrivate.post('/calendar', {
-        blueprintId,
-        date: targetDate, // e.g., "2026-02-15T00:00:00.000Z"
-      });
+      const response = await axiosPrivate.post('/calendar', { blueprintId, date: targetDate, timeOfDay });
       setEntries(prev => [...prev, response.data]);
     } catch (err) {
-      console.error('Failed to place task on calendar', err);
+      console.error('Failed to place task', err);
     }
   };
 
-  // Group entries by date for the UI grid mapping
-  const getEntriesByDate = (dateNum) => {
-    return entries.filter(entry => {
-      const entryDate = new Date(entry.date);
-      return entryDate.getUTCDate() === dateNum;
-    });
+  // NEW: Update status, time, or move to a new date
+  const updateEntry = async (id, updates) => {
+    try {
+      const response = await axiosPrivate.put(`/calendar/${id}`, updates);
+      setEntries(prev => prev.map(entry => entry._id === id ? response.data : entry));
+    } catch (err) {
+      console.error('Failed to update entry', err);
+    }
   };
 
-  return { entries, loading, getEntriesByDate, addEntryToDate, refetch: fetchEntries };
+  // NEW: Delete a calendar entry
+  const deleteEntry = async (id) => {
+    try {
+      await axiosPrivate.delete(`/calendar/${id}`);
+      setEntries(prev => prev.filter(entry => entry._id !== id));
+    } catch (err) {
+      console.error('Failed to delete entry', err);
+    }
+  };
+
+  const getEntriesByDate = (dateNum) => {
+    return entries.filter(entry => new Date(entry.date).getUTCDate() === dateNum);
+  };
+
+  return { entries, loading, getEntriesByDate, addEntryToDate, updateEntry, deleteEntry, refetch: fetchEntries };
 };
