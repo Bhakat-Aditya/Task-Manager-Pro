@@ -8,6 +8,7 @@ export const DayViewModal = ({
   onEdit,
   onView,
   onToggleStatus,
+  isPast, // NEW PROP
 }) => {
   if (!isOpen) return null;
 
@@ -22,16 +23,17 @@ export const DayViewModal = ({
         className="w-full max-w-lg bg-white dark:bg-[#0f0f0f] rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Mind-blowing Header */}
-        <header className="relative px-8 py-6 bg-gradient-to-br from-blue-600 to-indigo-700 overflow-hidden">
+        <header
+          className={`relative px-8 py-6 ${isPast ? "bg-gray-600 dark:bg-gray-800" : "bg-gradient-to-br from-blue-600 to-indigo-700"} overflow-hidden`}
+        >
           <div className="absolute inset-0 bg-white/10 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           <div className="relative z-10 flex justify-between items-start">
             <div>
-              <p className="text-blue-100 font-medium text-sm uppercase tracking-widest mb-1">
-                Schedule
+              <p className="text-white/80 font-medium text-sm uppercase tracking-widest mb-1">
+                {isPast ? "Past Schedule" : "Schedule"}
               </p>
               <h3 className="text-3xl font-black text-white tracking-tight">
-                Feb {dateNum}, 2026
+                {dateNum}
               </h3>
             </div>
             <button
@@ -44,15 +46,16 @@ export const DayViewModal = ({
         </header>
 
         <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar bg-gray-50 dark:bg-[#0f0f0f]">
-          {/* SINGLE ADD TASK BUTTON */}
-          <button
-            onClick={onAddClick}
-            className="w-full py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm"
-          >
-            + Add Task to this Day
-          </button>
+          {/* Hide Add Task if Past */}
+          {!isPast && (
+            <button
+              onClick={onAddClick}
+              className="w-full py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm"
+            >
+              + Add Task to this Day
+            </button>
+          )}
 
-          {/* Categorized Tasks */}
           <div className="space-y-6">
             {timeSlots.map((time) => {
               const slotTasks = tasks.filter(
@@ -71,7 +74,7 @@ export const DayViewModal = ({
                     {slotTasks.map((task) => (
                       <div
                         key={task._id}
-                        className="group flex items-center justify-between p-3.5 bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all hover:border-blue-200 dark:hover:border-blue-900/50"
+                        className="group flex items-center justify-between p-3.5 bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all"
                       >
                         <div className="flex items-center gap-3">
                           <button
@@ -83,11 +86,7 @@ export const DayViewModal = ({
                                   : "completed",
                               )
                             }
-                            className={`w-5 h-5 rounded-full border-2 transition-colors flex justify-center items-center ${
-                              task.status === "completed"
-                                ? "bg-green-500 border-green-500"
-                                : "border-gray-300 dark:border-gray-600"
-                            }`}
+                            className={`w-5 h-5 rounded-full border-2 transition-colors flex justify-center items-center ${task.status === "completed" ? "bg-green-500 border-green-500" : "border-gray-300 dark:border-gray-600"}`}
                           >
                             {task.status === "completed" && (
                               <svg
@@ -110,7 +109,6 @@ export const DayViewModal = ({
                           </div>
                         </div>
 
-                        {/* Hover Action Buttons (Eye, Edit, Trash) */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => onView(task)}
@@ -119,20 +117,26 @@ export const DayViewModal = ({
                           >
                             👁️
                           </button>
-                          <button
-                            onClick={() => onEdit(task)}
-                            className="p-2 text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors"
-                            title="Edit Task"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => onDelete(task._id)}
-                            className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            title="Delete Task"
-                          >
-                            🗑️
-                          </button>
+
+                          {/* Hide Edit and Delete if Past */}
+                          {!isPast && (
+                            <>
+                              <button
+                                onClick={() => onEdit(task)}
+                                className="p-2 text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors"
+                                title="Edit Task"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => onDelete(task._id)}
+                                className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Delete Task"
+                              >
+                                🗑️
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}

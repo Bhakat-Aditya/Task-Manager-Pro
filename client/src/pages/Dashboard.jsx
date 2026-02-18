@@ -17,11 +17,14 @@ const Dashboard = () => {
   const { getEntriesByDate, addEntryToDate, updateEntry, deleteEntry } =
     useCalendar();
 
-  // Modal States
+  // --- Date & Navigation State ---
+  const today = new Date();
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+
+  // Modals & Selection State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
-
-  // Generic Task Modals State
   const [formModalConfig, setFormModalConfig] = useState({
     isOpen: false,
     type: null,
@@ -30,7 +33,62 @@ const Dashboard = () => {
   const [viewModalTask, setViewModalTask] = useState(null);
   const [activeDragTask, setActiveDragTask] = useState(null);
 
-  const getFullDate = (dayNum) => new Date(Date.UTC(2026, 1, dayNum));
+  // --- Calendar Math ---
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  const isPastDate = (year, month, day) => {
+    const cellDate = new Date(year, month, day);
+    const todayDate = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    return cellDate < todayDate;
+  };
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+  const totalCells = Math.ceil((daysInMonth + firstDayOfMonth) / 7) * 7;
+
+  // Creates array of dates, prepending nulls for empty padding days
+  const gridCells = Array.from({ length: totalCells }).map((_, i) => {
+    const dayNum = i - firstDayOfMonth + 1;
+    return dayNum > 0 && dayNum <= daysInMonth ? dayNum : null;
+  });
+
+  const getFullDate = (dayNum) =>
+    new Date(Date.UTC(currentYear, currentMonth, dayNum));
 
   // --- Drag & Drop ---
   const handleDragStart = (e) =>
@@ -43,8 +101,11 @@ const Dashboard = () => {
     const { active, over } = event;
     if (!over) return;
 
+    const targetDayNum = over.data.current?.dateNum;
+    if (!targetDayNum) return; // Dropped on an empty padding cell
+
     const activeType = active.data.current?.type;
-    const targetDate = getFullDate(parseInt(over.id.split("-")[1], 10));
+    const targetDate = getFullDate(targetDayNum);
 
     if (activeType === "TaskBlueprint") {
       await addEntryToDate(
@@ -72,7 +133,6 @@ const Dashboard = () => {
         timeOfDay: data.timeOfDay,
       });
     } else if (formModalConfig.type === "day_create") {
-      // Create a background blueprint, then add to calendar
       const newBlueprint = await addTask({
         title: data.title,
         defaultDescription: data.description,
@@ -88,7 +148,6 @@ const Dashboard = () => {
         customDescription: data.description,
         timeOfDay: data.timeOfDay,
       });
-      // Note: Updating title updates the global Blueprint
       await updateTask(formModalConfig.initialData.blueprintId._id, {
         title: data.title,
       });
@@ -155,7 +214,49 @@ const Dashboard = () => {
           {/* RIGHT PANEL */}
           <main className="flex-1 h-full flex flex-col bg-white dark:bg-[#0a0a0a]">
             <header className="h-20 px-8 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
-              <h2 className="text-2xl font-bold">February 2026</h2>
+              {/* Dynamic Month/Year Navigation */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <h2 className="text-2xl font-bold w-48 text-center">
+                  {monthNames[currentMonth]} {currentYear}
+                </h2>
+                <button
+                  onClick={handleNextMonth}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+              </div>
+
               <button
                 onClick={() => setIsShareModalOpen(true)}
                 className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-semibold hover:opacity-80"
@@ -179,10 +280,32 @@ const Dashboard = () => {
                   )}
                 </div>
 
-                <div className="flex-1 grid grid-cols-7 grid-rows-5 h-full overflow-hidden">
-                  {Array.from({ length: 35 }).map((_, i) => {
-                    const dateNum = (i % 28) + 1;
-                    const dayTasks = getEntriesByDate(dateNum).map((entry) => ({
+                {/* Dynamic Grid Mapping */}
+                <div
+                  className={`flex-1 grid grid-cols-7 grid-rows-${totalCells / 7} h-full overflow-hidden`}
+                >
+                  {gridCells.map((dateNum, i) => {
+                    if (!dateNum) {
+                      return (
+                        <DroppableDay
+                          key={`empty-${i}`}
+                          dateNum={null}
+                          tasks={[]}
+                          isPast={true}
+                        />
+                      );
+                    }
+
+                    const isPast = isPastDate(
+                      currentYear,
+                      currentMonth,
+                      dateNum,
+                    );
+                    const dayTasks = getEntriesByDate(
+                      currentYear,
+                      currentMonth,
+                      dateNum,
+                    ).map((entry) => ({
                       ...entry,
                       title: entry.blueprintId?.title,
                     }));
@@ -192,7 +315,8 @@ const Dashboard = () => {
                         key={`day-${dateNum}`}
                         dateNum={dateNum}
                         tasks={dayTasks}
-                        onClick={() => setSelectedDay(dateNum)} // Note: Changed to onDoubleClick inside DroppableDay component
+                        isPast={isPast}
+                        onClick={() => setSelectedDay(dateNum)}
                         onToggleComplete={(id, status) =>
                           updateEntry(id, { status })
                         }
@@ -216,7 +340,6 @@ const Dashboard = () => {
         </DragOverlay>
       </DndContext>
 
-      {/* Global Modals */}
       <TaskFormModal
         isOpen={formModalConfig.isOpen}
         initialData={formModalConfig.initialData}
@@ -241,14 +364,22 @@ const Dashboard = () => {
       <DayViewModal
         isOpen={!!selectedDay}
         onClose={() => setSelectedDay(null)}
-        dateNum={selectedDay}
+        dateNum={
+          selectedDay
+            ? `${monthNames[currentMonth]} ${selectedDay}, ${currentYear}`
+            : ""
+        }
         tasks={
           selectedDay
-            ? getEntriesByDate(selectedDay).map((e) => ({
-                ...e,
-                title: e.blueprintId?.title,
-              }))
+            ? getEntriesByDate(currentYear, currentMonth, selectedDay).map(
+                (e) => ({ ...e, title: e.blueprintId?.title }),
+              )
             : []
+        }
+        isPast={
+          selectedDay
+            ? isPastDate(currentYear, currentMonth, selectedDay)
+            : false
         }
         onAddClick={() =>
           setFormModalConfig({

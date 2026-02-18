@@ -1,9 +1,10 @@
 import { useDraggable } from "@dnd-kit/core";
 
-export const DraggableCalendarTask = ({ entry, onToggleComplete }) => {
+export const DraggableCalendarTask = ({ entry, onToggleComplete, isPast }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `entry-${entry._id}`,
-    data: { type: "CalendarEntry", entry }, // Identifies this as an existing entry, not a library task
+    data: { type: "CalendarEntry", entry },
+    disabled: isPast, // NEW: Disable dragging if this task is in the past
   });
 
   const isCompleted = entry.status === "completed";
@@ -11,16 +12,18 @@ export const DraggableCalendarTask = ({ entry, onToggleComplete }) => {
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
+      // Only attach drag listeners if it's NOT in the past
+      {...(isPast ? {} : listeners)}
+      {...(isPast ? {} : attributes)}
       className={`
-        text-xs px-2 py-1.5 rounded-md border shadow-sm flex items-center gap-2 group/task transition-all cursor-grab active:cursor-grabbing
-        ${isDragging ? "opacity-30 scale-95" : "opacity-100 scale-100"}
+        text-xs px-2 py-1.5 rounded-md border shadow-sm flex items-center gap-2 group/task transition-all
+        ${isPast ? "cursor-default opacity-80" : "cursor-grab active:cursor-grabbing"}
+        ${isDragging ? "opacity-30 scale-95" : "scale-100"}
         ${isCompleted ? "bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-800 text-gray-500" : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-black dark:text-white hover:border-blue-300 dark:hover:border-blue-600"}
       `}
     >
       <button
-        onPointerDown={(e) => e.stopPropagation()} // Prevents dragging when clicking the circle
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           onToggleComplete(entry._id, isCompleted ? "pending" : "completed");
@@ -52,7 +55,6 @@ export const DraggableCalendarTask = ({ entry, onToggleComplete }) => {
         {entry.title}
       </span>
 
-      {/* Time Badge */}
       {entry.timeOfDay && entry.timeOfDay !== "Any" && (
         <span className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-500 font-medium tracking-wide">
           {entry.timeOfDay.charAt(0)}

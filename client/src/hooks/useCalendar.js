@@ -28,7 +28,6 @@ export const useCalendar = () => {
     }
   };
 
-  // NEW: Update status, time, or move to a new date
   const updateEntry = async (id, updates) => {
     try {
       const response = await axiosPrivate.put(`/calendar/${id}`, updates);
@@ -38,7 +37,6 @@ export const useCalendar = () => {
     }
   };
 
-  // NEW: Delete a calendar entry
   const deleteEntry = async (id) => {
     try {
       await axiosPrivate.delete(`/calendar/${id}`);
@@ -48,8 +46,12 @@ export const useCalendar = () => {
     }
   };
 
-  const getEntriesByDate = (dateNum) => {
-    return entries.filter(entry => new Date(entry.date).getUTCDate() === dateNum);
+  // NEW: Filter by Year and Month as well as Date
+  const getEntriesByDate = (year, month, dateNum) => {
+    return entries.filter(entry => {
+      const d = new Date(entry.date);
+      return d.getUTCFullYear() === year && d.getUTCMonth() === month && d.getUTCDate() === dateNum;
+    });
   };
 
   return { entries, loading, getEntriesByDate, addEntryToDate, updateEntry, deleteEntry, refetch: fetchEntries };
