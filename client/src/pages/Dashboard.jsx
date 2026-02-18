@@ -5,83 +5,94 @@ import { DraggableTask } from "../components/Calendar/DraggableTask";
 import { DroppableDay } from "../components/Calendar/DroppableDay";
 import { ShareModal } from "../components/common/ShareModal";
 import { ThemeToggle } from "../components/common/ThemeToggle";
-import { CreateTaskModal } from "../components/common/CreateTaskModal";
+import { TaskFormModal } from "../components/common/TaskFormModal";
+import { ViewTaskModal } from "../components/common/ViewTaskModal";
 import { DayViewModal } from "../components/Calendar/DayViewModal";
 import { useTasks } from "../hooks/useTasks";
 import { useCalendar } from "../hooks/useCalendar";
 
 const Dashboard = () => {
   const { logout } = useAuth();
-
-  // Custom API Hooks
-  const { tasks: libraryTasks, addTask } = useTasks();
+  const { tasks: libraryTasks, addTask, updateTask, deleteTask } = useTasks();
   const { getEntriesByDate, addEntryToDate, updateEntry, deleteEntry } =
     useCalendar();
 
-  // UI States
+  // Modal States
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
 
-  // Track the currently dragged task for the smooth floating overlay
+  // Generic Task Modals State
+  const [formModalConfig, setFormModalConfig] = useState({
+    isOpen: false,
+    type: null,
+    initialData: null,
+  });
+  const [viewModalTask, setViewModalTask] = useState(null);
   const [activeDragTask, setActiveDragTask] = useState(null);
 
-  // Helper to generate correct Date object for saving
-  const getFullDateFromDayNumber = (dayNum) => {
-    return new Date(Date.UTC(2026, 1, dayNum)); // February 2026 (0-indexed month)
-  };
+  const getFullDate = (dayNum) => new Date(Date.UTC(2026, 1, dayNum));
 
-  // Drag Start: Identify what is being dragged
-  const handleDragStart = (event) => {
-    const { active } = event;
-    if (active.data.current.type === "TaskBlueprint") {
-      setActiveDragTask(active.data.current.task);
-    } else if (active.data.current.type === "CalendarEntry") {
-      setActiveDragTask(active.data.current.entry);
-    }
-  };
+  // --- Drag & Drop ---
+  const handleDragStart = (e) =>
+    setActiveDragTask(
+      e.active.data.current?.task || e.active.data.current?.entry,
+    );
 
-  // Drag End: Drop logic for both Library Blueprints & Calendar Entries
   const handleDragEnd = async (event) => {
-    setActiveDragTask(null); // Reset overlay
+    setActiveDragTask(null);
     const { active, over } = event;
     if (!over) return;
 
     const activeType = active.data.current?.type;
-    const targetDayNum = parseInt(over.id.split("-")[1], 10);
-    const targetDate = getFullDateFromDayNumber(targetDayNum);
+    const targetDate = getFullDate(parseInt(over.id.split("-")[1], 10));
 
     if (activeType === "TaskBlueprint") {
-      // 1. Dragged from Left Library -> Create New Calendar Entry
-      const blueprintId = active.data.current.task._id;
-      const timeOfDay = active.data.current.task.timeOfDay || "Any";
-      await addEntryToDate(blueprintId, targetDate, timeOfDay);
+      await addEntryToDate(
+        active.data.current.task._id,
+        targetDate,
+        active.data.current.task.timeOfDay,
+      );
     } else if (activeType === "CalendarEntry") {
-      // 2. Dragged from Calendar Day -> Move to Another Day
-      const entryId = active.data.current.entry._id;
-      const currentDayNum = new Date(
-        active.data.current.entry.date,
-      ).getUTCDate();
-
-      // Only hit the API if they actually moved it to a different day
-      if (currentDayNum !== targetDayNum) {
-        await updateEntry(entryId, { date: targetDate });
-      }
+      await updateEntry(active.data.current.entry._id, { date: targetDate });
     }
   };
 
-  // Handle clicking the completion circle on a task
-  const handleToggleComplete = async (entryId, newStatus) => {
-    await updateEntry(entryId, { status: newStatus });
-  };
-
-  // Handle adding a task from the Day View Modal directly
-  const handleQuickAdd = async (blueprintId) => {
-    if (!selectedDay) return;
-    const targetDate = getFullDateFromDayNumber(selectedDay);
-    // Find the library task to inherit its default time
-    const libTask = libraryTasks.find((t) => t._id === blueprintId);
-    await addEntryToDate(blueprintId, targetDate, libTask?.timeOfDay || "Any");
+  // --- Form Handlers ---
+  const handleFormSubmit = async (data) => {
+    if (formModalConfig.type === "library_create") {
+      await addTask({
+        title: data.title,
+        defaultDescription: data.description,
+        timeOfDay: data.timeOfDay,
+      });
+    } else if (formModalConfig.type === "library_edit") {
+      await updateTask(formModalConfig.initialData._id, {
+        title: data.title,
+        defaultDescription: data.description,
+        timeOfDay: data.timeOfDay,
+      });
+    } else if (formModalConfig.type === "day_create") {
+      // Create a background blueprint, then add to calendar
+      const newBlueprint = await addTask({
+        title: data.title,
+        defaultDescription: data.description,
+        timeOfDay: data.timeOfDay,
+      });
+      await addEntryToDate(
+        newBlueprint._id,
+        getFullDate(selectedDay),
+        data.timeOfDay,
+      );
+    } else if (formModalConfig.type === "day_edit") {
+      await updateEntry(formModalConfig.initialData._id, {
+        customDescription: data.description,
+        timeOfDay: data.timeOfDay,
+      });
+      // Note: Updating title updates the global Blueprint
+      await updateTask(formModalConfig.initialData.blueprintId._id, {
+        title: data.title,
+      });
+    }
   };
 
   return (
@@ -91,18 +102,16 @@ const Dashboard = () => {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* PURE WHITE/BLACK BACKGROUND */}
         <div className="flex h-screen w-full bg-white dark:bg-[#0a0a0a] text-black dark:text-white overflow-hidden transition-colors duration-500">
           {/* LEFT PANEL */}
           <aside className="w-[30%] min-w-[300px] max-w-[380px] h-full border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#121212] flex flex-col z-10">
             <header className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-white dark:bg-[#0a0a0a]">
               <h1 className="text-2xl font-black tracking-tighter">TaskFlow</h1>
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2">
                 <ThemeToggle />
                 <button
                   onClick={logout}
-                  className="p-2 text-gray-500 hover:text-red-500 transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"
-                  title="Logout"
+                  className="p-2 text-gray-500 hover:text-red-500 bg-gray-100 dark:bg-gray-800 rounded-xl"
                 >
                   ⎋
                 </button>
@@ -111,15 +120,33 @@ const Dashboard = () => {
 
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar">
               <button
-                onClick={() => setIsCreateTaskOpen(true)}
-                className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:border-black dark:hover:border-white transition-all font-semibold"
+                onClick={() =>
+                  setFormModalConfig({
+                    isOpen: true,
+                    type: "library_create",
+                    initialData: null,
+                  })
+                }
+                className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl font-semibold hover:border-black dark:hover:border-white transition-all"
               >
                 + Add Reusable Task
               </button>
 
               <div className="space-y-3 mt-2">
                 {libraryTasks.map((task) => (
-                  <DraggableTask key={task._id} task={task} />
+                  <DraggableTask
+                    key={task._id}
+                    task={task}
+                    onView={() => setViewModalTask(task)}
+                    onEdit={() =>
+                      setFormModalConfig({
+                        isOpen: true,
+                        type: "library_edit",
+                        initialData: task,
+                      })
+                    }
+                    onDelete={deleteTask}
+                  />
                 ))}
               </div>
             </div>
@@ -131,21 +158,20 @@ const Dashboard = () => {
               <h2 className="text-2xl font-bold">February 2026</h2>
               <button
                 onClick={() => setIsShareModalOpen(true)}
-                className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-semibold hover:opacity-80 transition-opacity"
+                className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-semibold hover:opacity-80"
               >
                 Share Calendar
               </button>
             </header>
 
             <div className="flex-1 p-6 overflow-hidden">
-              <div className="h-full w-full border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-sm">
-                {/* Header Row */}
+              <div className="h-full w-full border border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col">
                 <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#121212]">
                   {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
                     (day) => (
                       <div
                         key={day}
-                        className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-widest"
+                        className="py-3 text-center text-xs font-bold text-gray-500 uppercase"
                       >
                         {day}
                       </div>
@@ -153,13 +179,12 @@ const Dashboard = () => {
                   )}
                 </div>
 
-                {/* Calendar Grid */}
                 <div className="flex-1 grid grid-cols-7 grid-rows-5 h-full overflow-hidden">
                   {Array.from({ length: 35 }).map((_, i) => {
                     const dateNum = (i % 28) + 1;
                     const dayTasks = getEntriesByDate(dateNum).map((entry) => ({
                       ...entry,
-                      title: entry.blueprintId?.title || "Unknown Task", // Fallback for populated data
+                      title: entry.blueprintId?.title,
                     }));
 
                     return (
@@ -167,8 +192,10 @@ const Dashboard = () => {
                         key={`day-${dateNum}`}
                         dateNum={dateNum}
                         tasks={dayTasks}
-                        onClick={() => setSelectedDay(dateNum)}
-                        onToggleComplete={handleToggleComplete} // Passed down to update status
+                        onClick={() => setSelectedDay(dateNum)} // Note: Changed to onDoubleClick inside DroppableDay component
+                        onToggleComplete={(id, status) =>
+                          updateEntry(id, { status })
+                        }
                       />
                     );
                   })}
@@ -178,36 +205,39 @@ const Dashboard = () => {
           </main>
         </div>
 
-        {/* Smooth Drag Overlay (Floats above everything during drag) */}
-        <DragOverlay
-          dropAnimation={{
-            duration: 250,
-            easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
-          }}
-        >
+        <DragOverlay dropAnimation={{ duration: 250 }}>
           {activeDragTask ? (
-            <div className="p-4 bg-white dark:bg-[#1a1a1a] border border-blue-500 rounded-xl shadow-2xl opacity-90 scale-105 rotate-2 cursor-grabbing">
-              <h3 className="font-semibold text-black dark:text-white">
+            <div className="p-4 bg-white dark:bg-[#1a1a1a] border border-blue-500 rounded-xl shadow-2xl opacity-90 scale-105 rotate-2">
+              <h3 className="font-semibold">
                 {activeDragTask.title || activeDragTask.blueprintId?.title}
               </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                {activeDragTask.defaultDescription || activeDragTask.timeOfDay}
-              </p>
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
 
-      {/* Modals */}
-      <CreateTaskModal
-        isOpen={isCreateTaskOpen}
-        onClose={() => setIsCreateTaskOpen(false)}
-        onAdd={addTask}
+      {/* Global Modals */}
+      <TaskFormModal
+        isOpen={formModalConfig.isOpen}
+        initialData={formModalConfig.initialData}
+        title={
+          formModalConfig.type?.includes("day") ? "Day Task" : "Reusable Task"
+        }
+        onClose={() =>
+          setFormModalConfig({ isOpen: false, type: null, initialData: null })
+        }
+        onSubmit={handleFormSubmit}
+      />
+      <ViewTaskModal
+        isOpen={!!viewModalTask}
+        task={viewModalTask}
+        onClose={() => setViewModalTask(null)}
       />
       <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
       />
+
       <DayViewModal
         isOpen={!!selectedDay}
         onClose={() => setSelectedDay(null)}
@@ -220,10 +250,23 @@ const Dashboard = () => {
               }))
             : []
         }
-        libraryTasks={libraryTasks}
-        onQuickAdd={handleQuickAdd}
+        onAddClick={() =>
+          setFormModalConfig({
+            isOpen: true,
+            type: "day_create",
+            initialData: null,
+          })
+        }
         onDelete={deleteEntry}
-        onUpdate={updateEntry}
+        onEdit={(task) =>
+          setFormModalConfig({
+            isOpen: true,
+            type: "day_edit",
+            initialData: task,
+          })
+        }
+        onView={setViewModalTask}
+        onToggleStatus={(id, status) => updateEntry(id, { status })}
       />
     </>
   );

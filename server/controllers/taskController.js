@@ -44,3 +44,19 @@ export const deleteTaskBlueprint = async (req, res) => {
     res.status(500).json({ message: 'Error deleting task', error: error.message });
   }
 };
+
+
+// Update a library task
+export const updateTaskBlueprint = async (req, res) => {
+  try {
+    const task = await TaskBlueprint.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user },
+      req.body,
+      { new: true }
+    );
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    res.status(200).json(task);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating task', error: error.message });
+  }
+};

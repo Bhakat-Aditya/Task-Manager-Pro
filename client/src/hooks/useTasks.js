@@ -41,6 +41,14 @@ export const useTasks = () => {
       throw new Error('Failed to delete task');
     }
   };
+  const updateTask = async (id, updates) => {
+    try {
+      const response = await axiosPrivate.put(`/tasks/${id}`, updates);
+      setTasks(prev => prev.map(t => t._id === id ? response.data : t));
+    } catch (err) {
+      console.error('Failed to update task', err);
+    }
+  };
 
-  return { tasks, loading, error, addTask, deleteTask, refetch: fetchTasks };
+  return { tasks, loading, error, addTask, deleteTask, updateTask, refetch: fetchTasks };
 };

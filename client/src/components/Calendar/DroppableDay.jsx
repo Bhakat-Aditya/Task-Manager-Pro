@@ -10,7 +10,10 @@ export const DroppableDay = ({ dateNum, tasks, onClick, onToggleComplete }) => {
   return (
     <div
       ref={setNodeRef}
-      onClick={() => onClick(dateNum)}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onClick(dateNum);
+      }}
       className={`
         h-full border-r border-b border-gray-200 dark:border-gray-800/80 p-2 flex flex-col overflow-hidden transition-all duration-300 group cursor-pointer
         ${isOver ? "bg-blue-50/50 dark:bg-blue-900/20 ring-2 ring-inset ring-blue-500/50" : "bg-transparent hover:bg-gray-50 dark:hover:bg-[#111]"}

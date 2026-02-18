@@ -3,10 +3,11 @@ export const DayViewModal = ({
   onClose,
   dateNum,
   tasks,
-  libraryTasks,
-  onQuickAdd,
+  onAddClick,
   onDelete,
-  onUpdate,
+  onEdit,
+  onView,
+  onToggleStatus,
 }) => {
   if (!isOpen) return null;
 
@@ -42,7 +43,15 @@ export const DayViewModal = ({
           </div>
         </header>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-8 custom-scrollbar bg-gray-50 dark:bg-[#0f0f0f]">
+        <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar bg-gray-50 dark:bg-[#0f0f0f]">
+          {/* SINGLE ADD TASK BUTTON */}
+          <button
+            onClick={onAddClick}
+            className="w-full py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-sm"
+          >
+            + Add Task to this Day
+          </button>
+
           {/* Categorized Tasks */}
           <div className="space-y-6">
             {timeSlots.map((time) => {
@@ -57,6 +66,7 @@ export const DayViewModal = ({
                     {time}{" "}
                     <span className="h-px flex-1 bg-gray-200 dark:bg-gray-800"></span>
                   </h4>
+
                   <div className="space-y-2">
                     {slotTasks.map((task) => (
                       <div
@@ -66,14 +76,18 @@ export const DayViewModal = ({
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() =>
-                              onUpdate(task._id, {
-                                status:
-                                  task.status === "completed"
-                                    ? "pending"
-                                    : "completed",
-                              })
+                              onToggleStatus(
+                                task._id,
+                                task.status === "completed"
+                                  ? "pending"
+                                  : "completed",
+                              )
                             }
-                            className={`w-5 h-5 rounded-full border-2 transition-colors flex justify-center items-center ${task.status === "completed" ? "bg-green-500 border-green-500" : "border-gray-300 dark:border-gray-600"}`}
+                            className={`w-5 h-5 rounded-full border-2 transition-colors flex justify-center items-center ${
+                              task.status === "completed"
+                                ? "bg-green-500 border-green-500"
+                                : "border-gray-300 dark:border-gray-600"
+                            }`}
                           >
                             {task.status === "completed" && (
                               <svg
@@ -93,34 +107,31 @@ export const DayViewModal = ({
                             >
                               {task.title}
                             </p>
-                            {task.customDescription && (
-                              <p className="text-xs text-gray-500">
-                                {task.customDescription}
-                              </p>
-                            )}
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
+                        {/* Hover Action Buttons (Eye, Edit, Trash) */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => onView(task)}
+                            className="p-2 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                            title="View Details"
+                          >
+                            👁️
+                          </button>
+                          <button
+                            onClick={() => onEdit(task)}
+                            className="p-2 text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors"
+                            title="Edit Task"
+                          >
+                            ✏️
+                          </button>
                           <button
                             onClick={() => onDelete(task._id)}
                             className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                             title="Delete Task"
                           >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
+                            🗑️
                           </button>
                         </div>
                       </div>
@@ -129,24 +140,6 @@ export const DayViewModal = ({
                 </div>
               );
             })}
-          </div>
-
-          {/* Quick Add Section */}
-          <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
-            <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">
-              Quick Add Template
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {libraryTasks.map((libTask) => (
-                <button
-                  key={libTask._id}
-                  onClick={() => onQuickAdd(libTask._id)}
-                  className="px-4 py-2 text-sm font-medium bg-white dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 rounded-xl hover:text-blue-600 hover:border-blue-500 dark:hover:text-blue-400 transition-all shadow-sm border border-gray-200 dark:border-gray-800 hover:-translate-y-0.5"
-                >
-                  + {libTask.title}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>

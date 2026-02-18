@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTaskBlueprints, createTaskBlueprint, deleteTaskBlueprint } from '../controllers/taskController.js';
+import { getTaskBlueprints, createTaskBlueprint, deleteTaskBlueprint, updateTaskBlueprint } from '../controllers/taskController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -12,6 +12,7 @@ router.route('/')
   .post(createTaskBlueprint);
 
 router.route('/:id')
-  .delete(deleteTaskBlueprint);
+  .put(updateTaskBlueprint)
+  .delete(deleteTaskBlueprint)
 
 export default router;

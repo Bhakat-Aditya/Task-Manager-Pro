@@ -1,38 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-export const CreateTaskModal = ({ isOpen, onClose, onAdd }) => {
-  const [title, setTitle] = useState("");
+export const TaskFormModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialData = null,
+  title = "Task",
+}) => {
+  const [taskTitle, setTaskTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [timeOfDay, setTimeOfDay] = useState("Any"); // NEW
+  const [timeOfDay, setTimeOfDay] = useState("Any");
+
+  useEffect(() => {
+    if (isOpen) {
+      setTaskTitle(initialData?.title || "");
+      setDescription(
+        initialData?.defaultDescription || initialData?.customDescription || "",
+      );
+      setTimeOfDay(initialData?.timeOfDay || "Any");
+    }
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    onAdd({
-      title,
-      defaultDescription: description,
-      color: "#3b82f6",
-      timeOfDay,
-    });
-    setTitle("");
-    setDescription("");
-    setTimeOfDay("Any");
+    if (!taskTitle.trim()) return;
+    onSubmit({ title: taskTitle, description, timeOfDay });
     onClose();
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-2xl p-6"
+        className="w-full max-w-md bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-2xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-xl font-bold mb-6 dark:text-white">
-          New Blueprint
+          {initialData ? `Edit ${title}` : `New ${title}`}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -42,15 +50,26 @@ export const CreateTaskModal = ({ isOpen, onClose, onAdd }) => {
             <input
               autoFocus
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
               required
               className="w-full mt-1.5 px-4 py-2.5 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-all"
             />
           </div>
           <div>
             <label className="text-xs font-bold uppercase text-gray-500 tracking-wider">
-              Default Time
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+              className="w-full mt-1.5 px-4 py-2.5 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-all resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase text-gray-500 tracking-wider">
+              Time of Day
             </label>
             <select
               value={timeOfDay}
@@ -76,7 +95,7 @@ export const CreateTaskModal = ({ isOpen, onClose, onAdd }) => {
               type="submit"
               className="px-5 py-2.5 rounded-xl font-medium bg-black dark:bg-white text-white dark:text-black hover:opacity-80 transition-opacity"
             >
-              Save Template
+              Save
             </button>
           </div>
         </form>
